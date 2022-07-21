@@ -1,0 +1,110 @@
+.driver-mask {
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, .5);
+    position: absolute;
+    left: 0;
+    top: 0;
+    display: none;
+}
+
+.driver-mask.active {
+    display: block;
+}
+
+.driver-mask-select {
+    display: none;
+    position: absolute;
+    background: #fff;
+    border-radius: 5px;
+}
+
+.driver-mask-select.active {
+    display: block;
+}
+
+.driver-dom-active {
+    position: relative;
+    z-index: 102;
+}
+
+.driver-mask-push-state {
+    display: none;
+    width: 150px;
+    min-height: 50px;
+    position: absolute;
+    z-index: 102;
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    padding: 5px;
+}
+
+.driver-mask-push-state::before {
+    content: "";
+    position: absolute;
+    border: 7px solid #fff;
+}
+
+.driver-desc-top::before {
+    left: 5px;
+    top: 100%;
+    border-top-color: #fff;
+    border-right-color: transparent;
+    border-bottom-color: transparent;
+    border-left-color: transparent;
+}
+
+.driver-desc-right::before {
+    left: -14px;
+    top: 7px;
+    border-top-color: transparent;
+    border-right-color: #fff;
+    border-bottom-color: transparent;
+    border-left-color: transparent;
+}
+
+.driver-desc-left::before {
+    left: 100%;
+    top: 7px;
+    border-top-color: transparent;
+    border-right-color: transparent;
+    border-bottom-color: transparent;
+    border-left-color: #fff;
+}
+
+.driver-desc-bottom::before {
+    left: 5px;
+    top: -14px;
+    border-top-color: transparent;
+    border-right-color: transparent;
+    border-bottom-color: #fff;
+    border-left-color: transparent;
+}
+
+.driver-mask-push-state.active {
+    display: block;
+}
+
+.driver-desc {
+    margin-bottom: 10px;
+}
+
+.driver-btn-container {
+    display: flex;
+    justify-content: space-between;
+}
+
+.driver-move {
+    transition: width .3s, height .3s,left .3s, top .3s;
+}
+
+.driver-customize-mask-push-state {
+    display: none;
+    position: absolute;
+    z-index: 102;
+}
+
+.driver-customize-mask-push-state.active {
+    display: block;
+}
