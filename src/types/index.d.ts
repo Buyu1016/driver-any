@@ -35,15 +35,10 @@ export interface IDriverConfig {
      */
     closeButtonText?: string;
     /**
-     * 下一步按钮文本, 当主动传递的值为空字符串是会不显示该按钮
+     * 下一步按钮文本,  当主动传递的值为空字符串是会不显示该按钮
      * @default "下一步"
      */
     nextButtonText?: string;
-    /**
-     * 上一步按钮文本, 当主动传递的值为空字符串是会不显示该按钮
-     * @default "上一步"
-     */
-    prevButtonText?: string;
     /**
      * 完成按钮文本
      * @default "完成"
@@ -60,11 +55,6 @@ export interface IDriverConfig {
      */
     ifShowNextButton?: boolean;
     /**
-     * 是否展示上一步按钮
-     * @default false
-     */
-    ifShowPrevButton?: boolean;
-    /**
      * 是否开始移动动画
      * @default true
      */
@@ -80,20 +70,15 @@ export interface IDriverConfig {
      */
     ifClickMaskCloseStep?: boolean;
     /**
-     * 引导步骤时是否允许页面滚动, 暂时只支持不允许滚动的情况
+     * 遮罩层开始时是否允许页面滚动
      * @default false
      */
-    ifScrollPageWhenStepStart?: boolean;
+    ifScrollPageWhenMaskStart?: boolean;
     /**
-     * 下一步触发回调函数
+     * 步骤更改回调函数
      * @default () => {}
      */
     onNextCallback?: (step: IDriverStepConfig) => void;
-    /**
-     * 上一步触发回调函数
-     * @default () => {}
-     */
-    onPrevCallback?: (step: IDriverStepConfig) => void;
     /**
      * 完成所有步骤回调函数
      * @default () => {}

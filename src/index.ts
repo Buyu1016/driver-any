@@ -1,13 +1,15 @@
-import { IDriverConfig, IDriverStepConfig, IDriverDirection } from "./types";
+import { IDriverConfig, IDriverStepConfig, TDriverDirection, TDriverAny } from "./types/index";
 
-export default class Driver {
+var DriverAny: TDriverAny = class {
     private stepsConfig: IDriverStepConfig[];
     private oMask: HTMLElement;
     private oSelector: HTMLElement;
     private oPushState?: HTMLElement;
     public resolveNext?: (value?: unknown) => void;
+    public rejectClose?: (value?: unknown) => void;
+    public resolvePrev?: (value?: unknown) => void;
     private pushComponentExtraInterval: number = 10;
-    public rejectClose?: (value?: unknown) => void
+    private currentStepIndex: number = 0;
 
     constructor(public config?: IDriverConfig) {
         this.stepsConfig = [];
@@ -39,61 +41,93 @@ export default class Driver {
     };
 
     // 开始执行引导步骤
-    public async start() {
+    public start() {
         // 第一次引导肯定要打开遮罩层级
         this.openMask();
         // 特殊情况就是this.stepsConfig为空的情况
         if (this.stepsConfig.length === 0) return;
+        disableScrollBar();
         // 按照顺序执行引导步骤(感觉这里的处理类似于控制请求并发)
-        let currentStepIndex = 0;
         const implement = () => {
             // 如果只有一步则直接下一步按钮变为完成按钮
             if (this.stepsConfig.length == 1) {
                 const oNextBtn: HTMLButtonElement | null = document.querySelector(".driver-next-btn");
                 oNextBtn && (oNextBtn.innerText = this.config?.finishButtonText as string);
             }
-            this.next(this.stepsConfig[currentStepIndex]).then(_ => {
+            // 当前步骤处于第一步时应该隐藏掉上一步按钮, 其余步骤应该根据用户配置决定是否显示上一步
+            const oPrevBtn: HTMLButtonElement | undefined | null = this.oPushState?.querySelector(".driver-prev-btn");
+            if (oPrevBtn) {
+                if (this.currentStepIndex === 0) {
+                    oPrevBtn.classList.remove("active");
+                } else if (this.config?.ifShowPrevButton) {
+                    oPrevBtn.classList.add("active");
+                }
+            }
+            // 如果是倒数第一步则修改下一步按钮文字为完成
+            const oNextBtn: HTMLButtonElement | null = document.querySelector(".driver-next-btn");
+            if (this.currentStepIndex === this.stepsConfig.length - 1) {
+                oNextBtn && (oNextBtn.innerText = this.config?.finishButtonText as string);
+            } else {
+                oNextBtn && (oNextBtn.innerText = this.config?.nextButtonText as string);
+            }
+            // 我认为应该每一次看currentIndex与this.currentStepIndex的差值就能决定应该触发上一步的回调函数还是下一步的回调函数
+            const currentIndex = this.currentStepIndex;
+            this.next(this.stepsConfig[this.currentStepIndex]).then(_ => {
                 // 每次都要把上一步选中的元素的driver-dom-active类名去掉
-                const oSelectorDom: HTMLElement | null = document.querySelector(this.stepsConfig[currentStepIndex].domSelector);
+                const oSelectorDom: HTMLElement | null = document.querySelector(this.stepsConfig[currentIndex].domSelector);
                 oSelectorDom && oSelectorDom.classList.remove("driver-dom-active");
                 if (this.config?.ifUsePushComponent) {
                     this.closePushComponent();
                 } else {
                     // 在未使用默认推动时应进去除的用户自己使用的推动状态组件
-                    const oCustomizedPushComponent: HTMLElement | null = document.querySelector(this.stepsConfig[currentStepIndex].customizedPushComponent as string);
+                    const oCustomizedPushComponent: HTMLElement | null = document.querySelector(this.stepsConfig[currentIndex].customizedPushComponent as string);
                     oCustomizedPushComponent && domAddOrRemoveClass(oCustomizedPushComponent, "active", "remove");
                 }
-                if (currentStepIndex === this.stepsConfig.length - 2) {
-                    // 如果是倒数第一步则修改下一步按钮文字为完成
-                    const oNextBtn: HTMLButtonElement | null = document.querySelector(".driver-next-btn");
-                    oNextBtn && (oNextBtn.innerText = this.config?.finishButtonText as string);
-                }
                 // 看一下当前步骤是否为最后一步
-                if (currentStepIndex === this.stepsConfig.length - 1) {
-                    // 触发下一步回调与完成回调
-                    this.config?.onNextCallback && this.config?.onNextCallback(this.stepsConfig[currentStepIndex]);
-                    this.config?.onFinishCallback && this.config?.onFinishCallback();
+                if (this.currentStepIndex === this.stepsConfig.length - 1) {
                     this.closeMask();
                     this.closeSelector();
                     // 清除暴露的resolveNext与rejectClose
                     this.resolveNext = undefined;
                     this.rejectClose = undefined;
+                    this.resolvePrev = undefined;
                 } else {
-                    // 触发下一步回调
-                    this.config?.onNextCallback && this.config?.onNextCallback(this.stepsConfig[currentStepIndex]);
                     // 否则接着执行下一步
-                    currentStepIndex ++;
+                    this.currentStepIndex ++;
                     implement();
+                }
+                // 触发回调规则(-1代表上一步, 1代表下一步, 0代表完成)
+                const stepDiff = this.currentStepIndex - currentIndex;
+                switch(stepDiff) {
+                    case -1:
+                        this.config?.onPrevCallback && this.config?.onPrevCallback(this.stepsConfig[this.currentStepIndex]);
+                        break;
+                    case 1:
+                        this.config?.onNextCallback && this.config?.onNextCallback(this.stepsConfig[this.currentStepIndex]);
+                        break;
+                    case 0:
+                        // 触发下一步回调与完成回调
+                        this.config?.onNextCallback && this.config?.onNextCallback(this.stepsConfig[this.currentStepIndex]);
+                        this.config?.onFinishCallback && this.config?.onFinishCallback();
+                        enableScrollBar();
+                        break;
                 }
             }, _ => {
                 // 失败表明用于点击了关闭引导步骤的按钮, 此时应该直接关闭遮罩层
                 // 也可能是用户提供的选择器的元素不存在
                 this.config?.onCloseCallback && this.config?.onCloseCallback();
+                enableScrollBar();
                 this.closeMask();
                 this.openSelector();
                 this.closePushComponent();
-                const oCustomizedPushComponent: HTMLElement | null = document.querySelector(this.stepsConfig[currentStepIndex].customizedPushComponent as string);
-                oCustomizedPushComponent && domAddOrRemoveClass(oCustomizedPushComponent, "active", "remove");
+                if (!this.config?.ifUsePushComponent) {
+                    if (this.currentStepIndex < 0) { // 校准数据
+                        this.currentStepIndex = 0;
+                    }
+                    const oCustomizedPushComponent: HTMLElement | null = document.querySelector(this.stepsConfig[this.currentStepIndex].customizedPushComponent as string);
+                    oCustomizedPushComponent && domAddOrRemoveClass(oCustomizedPushComponent, "active", "remove");
+                    this.oSelector && domAddOrRemoveClass(this.oSelector, "active", "remove");
+                }
             })
         }
         // 启动引导步骤
@@ -128,7 +162,7 @@ export default class Driver {
                 domAddOrRemoveClass(this.oPushState, `driver-desc-${config.pushComponentPosition || this.config.pushComponentPosition}`, "add");
                 // 如果用户使用了还需要看用户想要规定的提示框的位置
                 // 感觉应该按照选中的那个元素的位置做计算
-                computedTargetData(oSelectorDom, this.oPushState, config.pushComponentPosition || this.config.pushComponentPosition as IDriverDirection, this.config.selectPadding as number + this.pushComponentExtraInterval || this.pushComponentExtraInterval);
+                computedTargetData(oSelectorDom, this.oPushState, config.pushComponentPosition || this.config.pushComponentPosition as TDriverDirection, this.config.selectPadding as number + this.pushComponentExtraInterval || this.pushComponentExtraInterval);
                 // 修改步骤描述词
                 const oPushDesc: HTMLButtonElement | null = this.oPushState.querySelector(".driver-desc");
                 oPushDesc && (oPushDesc.innerText = config.stepDesc || "");
@@ -139,12 +173,18 @@ export default class Driver {
                     if (oCustomizedPushComponent) {
                         // 开始处理
                         oCustomizedPushComponent.classList.add("active");
-                        computedTargetData(oSelectorDom, oCustomizedPushComponent, config.pushComponentPosition || this.config.pushComponentPosition as IDriverDirection, this.config.selectPadding || 0);
+                        computedTargetData(oSelectorDom, oCustomizedPushComponent, config.pushComponentPosition || this.config.pushComponentPosition as TDriverDirection, this.config.selectPadding || 0);
                     }
                 };
             }
             // 把resolve与reject放入
             this.resolveNext = resolve;
+            this.resolvePrev = () => {
+                // 回退一步并执行resolve
+                this.currentStepIndex -= 2;
+                resolve(undefined);
+                // 这个还不能直接调用, 如果是最后一步则需要特殊处理
+            };
             this.rejectClose = reject;
         });
     };
@@ -163,14 +203,17 @@ export default class Driver {
             pushComponentPosition,
             closeButtonText,
             nextButtonText,
+            prevButtonText,
             finishButtonText,
             ifShowCloseButton,
             ifShowNextButton,
+            ifShowPrevButton,
             animation,
             pushComponentClass,
             ifClickMaskCloseStep,
-            ifScrollPageWhenMaskStart,
+            ifScrollPageWhenStepStart,
             onNextCallback,
+            onPrevCallback,
             onFinishCallback,
             onCloseCallback,
         } = this.config;
@@ -184,14 +227,17 @@ export default class Driver {
             pushComponentPosition: pushComponentPosition || "bottom",
             closeButtonText: closeButtonText || "关闭",
             nextButtonText: nextButtonText || "下一步",
+            prevButtonText: prevButtonText || "上一步",
             finishButtonText: finishButtonText || "完成",
             ifShowCloseButton: ifShowCloseButton || true,
             ifShowNextButton: ifShowNextButton || true,
+            ifShowPrevButton: ifShowPrevButton || (ifShowPrevButton === false ? false : true),
             animation: animation || (animation === false ? false : true),
             pushComponentClass: pushComponentClass || "",
             ifClickMaskCloseStep: ifClickMaskCloseStep || (ifClickMaskCloseStep === false ? false : true),
-            ifScrollPageWhenMaskStart: ifScrollPageWhenMaskStart ||  (ifScrollPageWhenMaskStart === false ? false : true),
+            ifScrollPageWhenStepStart: ifScrollPageWhenStepStart ||  (ifScrollPageWhenStepStart === false ? false : true),
             onNextCallback: onNextCallback || (() => {}),
+            onPrevCallback: onPrevCallback || (() => {}),
             onFinishCallback: onFinishCallback || (() => {}),
             onCloseCallback: onCloseCallback || (() => {}),
         }
@@ -285,36 +331,26 @@ export default class Driver {
         oBtnContainer.className = "driver-btn-container";
         // 生成关闭按钮(可选)
         if (this.config?.ifShowCloseButton) {
-            const oCloseBtn = document.createElement("button");
-            oCloseBtn.className = "driver-close-btn";
-            // 记得需要对这个按钮加点击事件
-            oCloseBtn.innerText = this.config.closeButtonText as string;
+            const oCloseBtn = createDom("button", "driver-close-btn", this.config.closeButtonText as string);;
             oCloseBtn.addEventListener("click", (event) => {
                 event.stopPropagation();
                 this.rejectClose && this.rejectClose();
             });
             oBtnContainer.appendChild(oCloseBtn);
         }
-        // 生成上一步按钮(可选)(待做)(暂时没想好怎么处理)
+        // 生成上一步按钮(可选)
         if (this.config?.ifShowNextButton) {
-            const oPrevBtn = document.createElement("button");
-            oPrevBtn.className = "driver-prev-btn";
-            // 记得需要对这个按钮加点击事件
-            oPrevBtn.innerText = this.config.nextButtonText as string;
+            const oPrevBtn = createDom("button", "driver-prev-btn", this.config.prevButtonText as string);
             oPrevBtn.addEventListener("click", (event) => {
                 event.stopPropagation();
-                console.log("上一步");
-                // this.resolveNext && this.resolveNext();
+                this.resolvePrev && this.resolvePrev();
             });
-            // oBtnContainer.appendChild(oPrevBtn);
+            oBtnContainer.appendChild(oPrevBtn);
         }
         // 生成下一步按钮(可选)
         if (this.config?.ifShowNextButton) {
-            const oNextBtn = document.createElement("button");
-            oNextBtn.className = "driver-next-btn";
-            // 记得需要对这个按钮加点击事件
-            oNextBtn.innerText = this.config.nextButtonText as string;
-            oNextBtn.addEventListener("click", (event) => {
+            const oNextBtn = createDom("button", "driver-next-btn", this.config.nextButtonText as string);
+            oNextBtn.addEventListener("click", event => {
                 event.stopPropagation();
                 this.resolveNext && this.resolveNext();
             });
@@ -365,7 +401,7 @@ export default class Driver {
  * @param direction 方向
  * @param difference 误差值
  */
-function computedTargetData(target: HTMLElement, confirmTarget: HTMLElement, direction: IDriverDirection, difference: number) {
+function computedTargetData(target: HTMLElement, confirmTarget: HTMLElement, direction: TDriverDirection, difference: number) {
     const { offsetHeight: th, offsetWidth: tw, offsetTop: tt, offsetLeft: tl } = target;
     const { offsetHeight: ch, offsetWidth: cw, style } = confirmTarget;
     let left: number = 0,
@@ -405,13 +441,38 @@ function domAddOrRemoveClass(dom: HTMLElement, className: string, type: "add" | 
     dom.classList[type](className);
 }
 
-/**TODO: 待做, 在遮罩层开启后是否允许页面滚动 */
+/**
+ * 
+ * @param domType 生成的dom类型
+ * @param className dom携带类名
+ * @param innerText dom的内容
+ * @param event dom的事件类型
+ * @param callback 事件触发回调
+ */
+function createDom(domType: string, className: string, innerText: string): HTMLElement {
+    const oDom: HTMLElement = document.createElement(domType);
+    oDom.className = className;
+    oDom.innerText = innerText;
+    return oDom;
+}
+
+/**TODO: 待做
+ *  1. 在遮罩层开启后是否允许页面滚动 √
+ *  2. 有可能步骤配置的选择器为string[]类型及一次选中多个元素
+ */
 /**
  * 启动滚动条
  */
-function enableScrollBar() {}
+function enableScrollBar() {
+    domAddOrRemoveClass(document.body, "driver-body-disable", "remove");
+}
 
 /**
  * 关闭滚动条
  */
-function disableScrollBar() {}
+function disableScrollBar() {
+    domAddOrRemoveClass(document.body, "driver-body-disable", "add");
+}
+
+window.DriverAny = DriverAny;
+export default DriverAny;

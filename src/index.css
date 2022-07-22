@@ -108,3 +108,15 @@
 .driver-customize-mask-push-state.active {
     display: block;
 }
+
+.driver-prev-btn {
+    display: none;
+}
+
+.driver-prev-btn.active {
+    display: block;
+}
+
+.driver-body-disable {
+    overflow: hidden;
+}

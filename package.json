@@ -1,6 +1,6 @@
 {
     "name": "driver-any",
-    "version": "0.0.1",
+    "version": "0.0.2",
     "description": "Highly customizable step guide",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
@@ -9,6 +9,14 @@
         "release": "tsc && npm publish"
     },
     "keywords": ["driver", "typescript"],
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/CodeGorgeous/driver-any"
+    },
+    "bugs": {
+        "url": "https://github.com/CodeGorgeous/driver-any/issues"
+    },
+    "homepage": "https://github.com/CodeGorgeous/driver-any",
     "author": "CodeGorgeous",
     "license": "MIT",
     "devDependencies": {
