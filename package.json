@@ -1,6 +1,6 @@
 {
     "name": "driver-any",
-    "version": "0.0.2",
+    "version": "0.0.3",
     "description": "Highly customizable step guide",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",

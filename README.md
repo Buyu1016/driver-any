@@ -8,7 +8,7 @@ Custom step guide library, you can customize the name, description, type, parame
 
 **Vue**
 
-Please import it globally first ```import "driver-any/index.css"```
+Please import it globally first ```import "driver-any/dist/index.css"```
 
 ```js
 import DriverAny from 'driver-any';
@@ -20,12 +20,12 @@ onMounted(() => {
         animation: true,
         onCloseCallback: () => {console.log("close");},
         onFinishCallback: () => {console.log("finish");},
-        onNextCallback: (item) => {console.log("下一步", item);},
-        onPrevCallback: (item) => {console.log("上一步", item);},
+        onNextCallback: (item) => {console.log("next", item);},
+        onPrevCallback: (item) => {console.log("prev", item);},
     });
     driver.configurationSteps([{
-        domSelector: "#step1", // 步骤一的元素选择器
-        stepDesc: "This is the descriptor for step one", // 第一步描述器具
+        domSelector: "#step1",
+        stepDesc: "This is the descriptor for step one",
         customizedPushComponent: "#step1-form",
         pushComponentPosition: "top"
     }, {
