@@ -1,12 +1,15 @@
 {
     "name": "driver-any",
-    "version": "0.0.3",
+    "version": "0.0.4",
     "description": "Highly customizable step guide",
-    "main": "dist/index.js",
-    "types": "dist/index.d.ts",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
     "scripts": {
-        "build": "tsc",
-        "release": "tsc && npm publish"
+        "copy": "cp ./src/index.css ./dist",
+        "start": "rm -fr ./dist && tsc -p ./config/tsconfig.development.json && yarn run copy",
+        "dev": "nodemon --watch ./src -e ts --exec yarn start",
+        "build": "rm -fr ./dist && tsc -p ./config/tsconfig.production.json && yarn run copy",
+        "release": "yarn build && npm publish"
     },
     "keywords": ["driver", "typescript"],
     "repository": {
