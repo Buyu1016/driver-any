@@ -9,7 +9,10 @@
         "start": "rm -fr ./dist && tsc -p ./config/tsconfig.development.json && yarn run copy",
         "dev": "nodemon --watch ./src -e ts --exec yarn start",
         "build": "rm -fr ./dist && tsc -p ./config/tsconfig.production.json && yarn run copy",
-        "release": "yarn build && npm publish"
+        "release": "yarn build && npm publish",
+        "patch": "npm version patch",
+        "minor": "npm version minor",
+        "major": "npm version major"
     },
     "keywords": ["driver", "typescript"],
     "repository": {
