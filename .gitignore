@@ -1,3 +1,28 @@
 dist
 node_modules
 index.html
+
+.classpath
+.project
+
+.settings
+yarn-err.log 
+
+*.err 
+# OS generated files #  
+.DS_Store  
+.DS_Store?  
+._*  
+.Spotlight-V100  
+.Trashes  
+ehthumbs.db  
+
+Thumbs.db  
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+### VS code ###
+.vscode
