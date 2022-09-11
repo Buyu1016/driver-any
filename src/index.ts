@@ -1,3 +1,5 @@
+let resizePositionedElementFn: any;
+let resizePositionedSelectFn: any;
 const DriverAny: TDriverAny = class {
     private stepsConfig: IDriverStepConfig[];
     private oMask: HTMLElement;
@@ -26,6 +28,7 @@ const DriverAny: TDriverAny = class {
         if (this.config?.ifUsePushComponent) {
             oPushState = this.pushComponentInit();
         }
+        this.addResizeAgainPosition();
         return [oMask, oSelector, oPushState];
     };
 
@@ -91,12 +94,12 @@ const DriverAny: TDriverAny = class {
                     this.resolvePrev = undefined;
                 } else {
                     // 否则接着执行下一步
-                    this.currentStepIndex ++;
+                    this.currentStepIndex++;
                     implement();
                 }
                 // 触发回调规则(-1代表上一步, 1代表下一步, 0代表完成)
                 const stepDiff = this.currentStepIndex - currentIndex;
-                switch(stepDiff) {
+                switch (stepDiff) {
                     case -1:
                         this.config?.onPrevCallback && this.config?.onPrevCallback(this.stepsConfig[this.currentStepIndex]);
                         break;
@@ -106,14 +109,20 @@ const DriverAny: TDriverAny = class {
                     case 0:
                         // 触发下一步回调与完成回调
                         this.config?.onNextCallback && this.config?.onNextCallback(this.stepsConfig[this.currentStepIndex]);
-                        this.config?.onFinishCallback && this.config?.onFinishCallback();
+                        this.config?.onFinishCallback && ((() => {
+                            this.removeResizeAgainPosition();
+                            this.config.onFinishCallback();
+                        })());
                         enableScrollBar();
                         break;
                 }
             }, _ => {
                 // 失败表明用于点击了关闭引导步骤的按钮, 此时应该直接关闭遮罩层
                 // 也可能是用户提供的选择器的元素不存在
-                this.config?.onCloseCallback && this.config?.onCloseCallback();
+                this.config?.onCloseCallback && ((() => {
+                    this.removeResizeAgainPosition();
+                    this.config.onCloseCallback();
+                })());
                 enableScrollBar();
                 this.closeMask();
                 this.openSelector();
@@ -140,17 +149,8 @@ const DriverAny: TDriverAny = class {
             if (!oSelectorDom) return reject();
             // 需要拿到目前元素的宽高和位置并为元素增加relative定位提高z-index
             oSelectorDom.classList.add("driver-dom-active");
-            const { offsetWidth, offsetHeight, offsetLeft, offsetTop } = oSelectorDom;
-            // 更改oSelector元素的宽高与位置
-            // 需要知道元素的padding;
-            // this.config各个可选属性在现在都是必定存在默认值的
             if(!this.config) return reject();
-            this.oSelector.style.padding = `${this.config?.selectPadding}px`;
-            this.oSelector.style.width = `${offsetWidth}px`;
-            this.oSelector.style.height = `${offsetHeight}px`;
-            this.oSelector.style.left = `${offsetLeft - (this.config.selectPadding as number)}px`;
-            this.oSelector.style.top = `${offsetTop - (this.config.selectPadding as number)}px`;
-            this.openSelector();
+            if (!this.positionedSelect()) return reject();
             // 更改oPushState组件位置
             if (this.config.ifUsePushComponent && this.oPushState) {
                 // 这一步要提前打开pushComponent, 要么后续无法计算其尺寸的其位置相关的
@@ -158,23 +158,11 @@ const DriverAny: TDriverAny = class {
                 // 应该检测元素上当前是否有driver-desc开头的class, 如果有则进行清除操作
                 this.oPushState.className = this.oPushState.className.replace(/driver-desc-\w+/g, "");
                 domAddOrRemoveClass(this.oPushState, `driver-desc-${config.pushComponentPosition || this.config.pushComponentPosition}`, "add");
-                // 如果用户使用了还需要看用户想要规定的提示框的位置
-                // 感觉应该按照选中的那个元素的位置做计算
-                computedTargetData(oSelectorDom, this.oPushState, config.pushComponentPosition || this.config.pushComponentPosition as TDriverDirection, this.config.selectPadding as number + this.pushComponentExtraInterval || this.pushComponentExtraInterval);
                 // 修改步骤描述词
                 const oPushDesc: HTMLButtonElement | null = this.oPushState.querySelector(".driver-desc");
                 oPushDesc && (oPushDesc.innerText = config.stepDesc || "");
-            } else {
-                // 用户使用了自己的自定义推动状态组件
-                if (config.customizedPushComponent) {
-                    const oCustomizedPushComponent: HTMLElement | null = document.querySelector(config.customizedPushComponent);
-                    if (oCustomizedPushComponent) {
-                        // 开始处理
-                        oCustomizedPushComponent.classList.add("active");
-                        computedTargetData(oSelectorDom, oCustomizedPushComponent, config.pushComponentPosition || this.config.pushComponentPosition as TDriverDirection, this.config.selectPadding || 0);
-                    }
-                };
             }
+            this.positionedElement();
             // 把resolve与reject放入
             this.resolveNext = resolve;
             this.resolvePrev = () => {
@@ -233,11 +221,11 @@ const DriverAny: TDriverAny = class {
             animation: animation || (animation === false ? false : true),
             pushComponentClass: pushComponentClass || "",
             ifClickMaskCloseStep: ifClickMaskCloseStep || (ifClickMaskCloseStep === false ? false : true),
-            ifScrollPageWhenStepStart: ifScrollPageWhenStepStart ||  (ifScrollPageWhenStepStart === false ? false : true),
-            onNextCallback: onNextCallback || (() => {}),
-            onPrevCallback: onPrevCallback || (() => {}),
-            onFinishCallback: onFinishCallback || (() => {}),
-            onCloseCallback: onCloseCallback || (() => {}),
+            ifScrollPageWhenStepStart: ifScrollPageWhenStepStart || (ifScrollPageWhenStepStart === false ? false : true),
+            onNextCallback: onNextCallback || (() => { }),
+            onPrevCallback: onPrevCallback || (() => { }),
+            onFinishCallback: onFinishCallback || (() => { }),
+            onCloseCallback: onCloseCallback || (() => { }),
         }
     };
     /**
@@ -390,6 +378,62 @@ const DriverAny: TDriverAny = class {
             }
         })
     }
+    /**
+     * 计算并定位元素位置
+     */
+    private positionedElement() {
+        let config = this.stepsConfig[this.currentStepIndex]
+        const oSelectorDom: HTMLElement | null = document.querySelector(config.domSelector);
+        if (!(this.oPushState && oSelectorDom)) return;
+        if (this.config?.ifUsePushComponent && this.oPushState) {
+            computedTargetData(oSelectorDom, this.oPushState, config.pushComponentPosition || this.config.pushComponentPosition as TDriverDirection, this.config.selectPadding as number + this.pushComponentExtraInterval || this.pushComponentExtraInterval);
+        } else {
+            // 用户使用了自己的自定义推动状态组件
+            if (config.customizedPushComponent) {
+                const oCustomizedPushComponent: HTMLElement | null = document.querySelector(config.customizedPushComponent);
+                if (oCustomizedPushComponent) {
+                    // 开始处理
+                    oCustomizedPushComponent.classList.add("active");
+                    computedTargetData(oSelectorDom, oCustomizedPushComponent, config.pushComponentPosition || this.config?.pushComponentPosition as TDriverDirection, this.config?.selectPadding || 0);
+                }
+            };
+        }
+    }
+    /**
+     * 计算并定位背景选中元素位置
+     * @returns { boolean } false 错误异常, true 正常
+     */
+    private positionedSelect() {
+        let config = this.stepsConfig[this.currentStepIndex]
+        const oSelectorDom: HTMLElement | null = document.querySelector(config.domSelector);
+        if (!oSelectorDom || !this.config) return false;
+        const { offsetWidth, offsetHeight, offsetLeft, offsetTop } = oSelectorDom;
+        // 更改oSelector元素的宽高与位置
+        // 需要知道元素的padding;
+        // this.config各个可选属性在现在都是必定存在默认值的
+        this.oSelector.style.padding = `${this.config?.selectPadding}px`;
+        this.oSelector.style.width = `${offsetWidth}px`;
+        this.oSelector.style.height = `${offsetHeight}px`;
+        this.oSelector.style.left = `${offsetLeft - (this.config.selectPadding as number)}px`;
+        this.oSelector.style.top = `${offsetTop - (this.config.selectPadding as number)}px`;
+        this.openSelector();
+        return true;
+    };
+    /**
+     * 添加监听resize事件并修正相应元素位置
+     */
+    private addResizeAgainPosition() {
+        resizePositionedElementFn = this.positionedElement.bind(this);
+        resizePositionedSelectFn = this.positionedSelect.bind(this);
+        window.addEventListener("resize", resizePositionedElementFn);
+        window.addEventListener("resize", resizePositionedSelectFn);
+    };
+    private removeResizeAgainPosition() {
+        window.removeEventListener("resize", resizePositionedElementFn);
+        window.removeEventListener("resize", resizePositionedSelectFn);
+        resizePositionedElementFn = undefined;
+        resizePositionedSelectFn = undefined;
+    }
 }
 
 /**
@@ -404,7 +448,6 @@ function computedTargetData(target: HTMLElement, confirmTarget: HTMLElement, dir
     const { offsetHeight: ch, offsetWidth: cw, style } = confirmTarget;
     let left: number = 0,
         top: number = 0;
-    // TODO: 这里有Bug, 具体描述就是在第一次使用到cw或者ch是拿到的数值不正确
     switch (direction) {
         case "top":
             left = tl;
@@ -427,6 +470,7 @@ function computedTargetData(target: HTMLElement, confirmTarget: HTMLElement, dir
     }
     style.left = `${left}px`;
     style.top = `${top}px`;
+    confirmTarget.getBoundingClientRect()
 }
 
 /**
@@ -444,8 +488,6 @@ function domAddOrRemoveClass(dom: HTMLElement, className: string, type: "add" | 
  * @param domType 生成的dom类型
  * @param className dom携带类名
  * @param innerText dom的内容
- * @param event dom的事件类型
- * @param callback 事件触发回调
  */
 function createDom(domType: string, className: string, innerText: string): HTMLElement {
     const oDom: HTMLElement = document.createElement(domType);
@@ -454,10 +496,6 @@ function createDom(domType: string, className: string, innerText: string): HTMLE
     return oDom;
 }
 
-/**TODO: 待做
- *  1. 在遮罩层开启后是否允许页面滚动 √
- *  2. 有可能步骤配置的选择器为string[]类型及一次选中多个元素
- */
 /**
  * 启动滚动条
  */
