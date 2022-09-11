@@ -1,6 +1,6 @@
 {
     "name": "driver-any",
-    "version": "0.0.4",
+    "version": "0.0.5",
     "description": "Highly customizable step guide",
     "main": "./dist/index.js",
     "types": "./dist/index.d.ts",
@@ -14,7 +14,10 @@
         "minor": "npm version minor",
         "major": "npm version major"
     },
-    "keywords": ["driver", "typescript"],
+    "keywords": [
+        "driver",
+        "typescript"
+    ],
     "repository": {
         "type": "git",
         "url": "git+https://github.com/CodeGorgeous/driver-any"
