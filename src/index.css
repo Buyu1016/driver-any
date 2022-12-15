@@ -17,6 +17,7 @@
     position: absolute;
     background: #fff;
     border-radius: 5px;
+    box-sizing: content-box;
 }
 
 .driver-mask-select.active {

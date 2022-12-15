@@ -1,3 +1,7 @@
 node_modules
 test
 .vsocde
+.gitignore
+.npmignore
+src
+config

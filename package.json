@@ -28,7 +28,5 @@
     "homepage": "https://github.com/CodeGorgeous/driver-any",
     "author": "CodeGorgeous",
     "license": "MIT",
-    "devDependencies": {
-        "typescript": "^4.6.4"
-    }
+    "devDependencies": {}
 }
