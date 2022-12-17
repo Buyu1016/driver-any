@@ -1,6 +1,6 @@
 ### 👨介绍/Why
 
-🚀 Driver-any能够帮助你更加快速的自定义化的为你页面中添加引导步骤, 只需简单的配置步骤即可呈现想要的引导用户快速使用王咱的效果.
+🚀 Driver-any能够帮助你更加快速的自定义化的为你页面中添加引导步骤, 只需简单的配置步骤即可呈现想要的引导用户快速使用网站的效果.
 
 ### 💻使用/Use
 
@@ -96,3 +96,5 @@ driver.start();
 | onPrevCallback | 引导步骤触发上一步时触发的回调函数 | ```(step: IDriverStepConfig) => void``` \| undefined | () => {} |
 | onFinishCallback | 引导步骤触发完成时触发的回调函数 | ```() => void``` \| undefined | () => {} |
 | onCloseCallback | 引导步骤触发关闭时触发的回调函数 | ```() => void``` \| undefined | () => {} |
+
+### 📚 更多功能, 敬请期待...
